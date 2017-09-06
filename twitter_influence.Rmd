@@ -1,0 +1,405 @@
+---
+title: "Twitter influence"
+output: html_notebook
+---
+
+This notebook is to help me discover the path of least resistance for the Kenya's online promoters. To mean who spurs conversations and who doesn't?
+
+
+
+```{r}
+library(tidyverse)
+library(stringr)
+tweeps <- c("Queen_gathoni", "Brianmbunde", "Asamoh_", "Kenyanpundit",
+            "LarryMadowo", "BonifaceMwangi", "bikozulu", "C_NyaKundiH",
+            "ninanjira", "nanjala1","sammygichuru","VinieO","masaku_",
+            "MutahiNgunyi","BobCollymore","MohajichoPevu","xtiandela",
+            "JulieGichuru","KoinangeJeff","mwalimchurchill","ItsMainaKageni",
+            "BahatiKenya","Mbusii","CarolineMutoko","lillian_muli",
+            "RevKathyKiuna",
+            "GraceMsalame","OfficialJMbugua","ADELLEO","AnneKiguta","ThisisEss",
+            "AngelaAngwenyi","muthoninjoba","Edith_kimani","VickyRubadiri",
+            "AnitaNderu","RobertAlai","bankelele","coldtusker","rookieke",
+            "kaluhiskitchen")
+tweeps_kot=c("BelAkinyii","cnyakundi_","breegathoni2","ashleyahmed19",
+"StaceyKerubo","joyigamba","FarahMaalimM","CpaWaweru","KaluhisKitchen",
+"Dianne_Meria","magymacha22","Midnimo254","Fahhimah","HNdonyi","ImJudyMuriithi",
+"RoadAlertsKE","pyepar","teairra_natasha","sivenziakelly","lengerdedh",
+"QueenOlwala","FiiDee_","xtiandela","LieDnt","MbucuWilson","vinny_wa","cyncarly_",
+"Mollage_","rumaysa_jamila","Moh_Clementines","MisRoxie","JuliusYegoKE","candybaibe170",
+"ResumesKenya", "Sc0fy_","TextBookCentreL","Joykwendo","ro_roseaja", "Misshekoh",
+"shecycles","kenyanpeasant","torrymartins","Kimarujnr","LatiffCherono",
+"Shirley_Sein", "Lyngakuru","Einterseptor","tianta_","katenderu","jmarjawar",
+"ChampagneKimie","GrantBrooke","Kipezer","tabbynn","mutheumbondo","PTitia_",
+"TheStarKenya","CarolRadull","nikkikalaine","an0nniemous_", "JanetMacharia",
+"LamsKenya_","JoyceLorna","RailaOdinga","AnnaNjuguna","Sheilakari","MonyqueXO",
+"HellenMasido","rae254rae","AnneKiguta","njiiru","mukuiyaR","Ramah_Nyang",
+"Yenyewe","galladostinoes","UKenyatta","JoyDoreenBiira", "Trackmann","mckym",
+"DjProtegeKenya","QueenGathoni","Yafesi_Musoke","benstake", "JICHOdaDOG",
+"sluvinzu","Owaahh","IamGe","MrNyoike","shyolympia","pierrengash","iWateba",
+"kuirab","Jay_Kamau","nanciemwai","bonifacemwangi","princelySid","NiNanjira",
+"Kamandeh_","RamzZy_","Mehboobah","silvianjoki","Kurlycheeks","JamesMutuaEng",
+"DjEyn","nishet","AKenyanG","mmnjug","smusyoka","tommakau","dailynation",
+"ClanSewe","LazzLo_","paulakahumbu","coldtusker","RobertAlai","gathara","Nekesa",
+"mentalacrobatic","YvonneNyamao","Dee_kui","ashikoyeO","Nanjala1","Asamoh_")
+
+#kot <- read_html("https://twitter.com/AdiePrestone/lists/kot/members") %>%
+#  html_nodes(xpath='//*[contains(concat( " ", @class, " " ), concat( " ", "u-dir", " " ))]') %>% html_text()
+# install.packages("devtools")
+# devtools::install_github("mkearney/rtweet")
+library(rtweet)
+twitter_token=create_token(app = "Adie", consumer_key="%%%%%%%%%%%%%%%%", consumer_secret="%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", cache = TRUE)
+tweeps_list <- c(tweeps,tweeps_kot)
+
+kenyan_users <- lookup_users(tweeps_list)
+# tweets_all <- NULL
+# for ( i in 146:length(tweeps_list)){
+# tweets_user <- get_timeline(tweeps_list[i],n=1500, token=token_here)
+# tweets_all <- rbind(tweets_all,tweets_user)
+# }
+# 
+# saveRDS(tweets_all, file="kot_tweets.RDS")
+# 
+# tweets_all2 <- tweets_all
+# tweets_all2<- tweets_all2 %>%
+#   mutate(tweet_url=paste0("https://twitter.com/",screen_name,"/status/",status_id))
+# tweets_all2$type <- ifelse(grepl("RT",str_sub(tweets_all2$text,1,2))==TRUE,
+#                           "retweet","own tweet")
+# 
+# tweets_all <- 
+# 
+# self_tweets <- tweets_all2 %>%
+#   filter(!type %in% "retweet")
+```
+```{r, loading_kotlist}
+# library(rvest)
+# url <- "https://twitter.com/login"
+# session <- html_session(url)
+# form <- html_form(read_html(url))[[2]]
+# 
+# filled_form <- set_values(form,
+#                           "session[username_or_email]" = "adieprestone",
+#                           "session[password]" = "%%%%%%%%")
+# 
+# kot_lists <- submit_form(session, filled_form) %>%
+#   jump_to("https://twitter.com/AdiePrestone/lists/kot/members") %>% 
+#   html_nodes(xpath='//div/a/span/b') %>%
+#   html_text()
+
+
+```
+
+next we will carry out a network analysis on the tweets to determine the most central figure on kenyan twitter
+
+And these variables that I used for building my ‘top score’: I simply calculate a percentile for each of those variables and sum it altogether for each user. Given that each variable’s percentile will give me a value between 0 and 1, The final score can have a maximum value of 5.
+```{r, top_50}
+kenyan_users %>% select(dplyr::contains("count")) %>% head()
+
+kenyan_users_ranking <- kenyan_users %>%
+  distinct() %>%
+  filter(protected == FALSE) %>% 
+  select(screen_name, dplyr::contains("count")) %>% 
+  unique() %>% 
+  mutate(followers_percentile = ecdf(followers_count)(followers_count),
+         friends_percentile = ecdf(friends_count)(friends_count),
+         listed_percentile = ecdf(listed_count)(listed_count),
+         favourites_percentile = ecdf(favourites_count)(favourites_count),
+         statuses_percentile = ecdf(statuses_count)(statuses_count)
+         ) %>% 
+  group_by(screen_name) %>% 
+  summarise(top_score = sum(followers_percentile, friends_percentile,
+                            listed_percentile, favourites_percentile,
+                            statuses_percentile)) %>% 
+  ungroup() %>% 
+  mutate(ranking = rank(-top_score))
+  
+top_50 <- kenyan_users_ranking %>% arrange(desc(top_score)) %>% head(50) %>% arrange(desc(top_score))
+top_50 
+```
+
+
+```{r reading_friends}
+top50_lookup <- kenyan_users %>%
+  filter(screen_name %in% top_50$screen_name) %>% 
+  select(screen_name, user_id)
+  
+friends_top50a <-   map(top_50$screen_name[1:15], get_friends)
+names(friends_top50a) <- top_50$screen_name[1:15]
+
+# 15 minutes later....
+friends_top50b <- map(top_50$screen_name[16:30], get_friends)
+names(friends_top50b) <- top_50$screen_name[16:30]
+
+# 15 minutes later....
+friends_top50c <- map(top_50$screen_name[31:45], get_friends)
+names(friends_top50c) <- top_50$screen_name[31:45]
+
+# 15 minutes later....
+friends_top50d <- map(top_50$screen_name[46:50], get_friends)
+names(friends_top50d) <- top_50$screen_name[46:50]
+
+#appending the lists together
+friends_top50_part1 <- append(friends_top50a, friends_top50b)
+friends_top50_part2 <- append(friends_top50c, friends_top50d)
+friends_top50 = append(friends_top50_part1, friends_top50_part2)
+names(friends_top50) <- top_50$screen_name
+saveRDS(friends_top50, file="friends_top50.rds")
+
+friends_top50=readRDS("friends_top50.rds")
+# purrr - trick I've been banging on about!
+friends_top <- map2_df(friends_top50, names(friends_top50), ~ mutate(.x, twitter_top_user = .y)) %>% 
+  rename(friend_id = user_id) %>% select(twitter_top_user, friend_id)
+
+```
+Select friends from the list
+
+```{r final_friends}
+final_friends_top50 <- friends_top  %>% 
+  filter(friend_id %in% top50_lookup$user_id)
+
+```
+
+add friends screen name and the final product
+
+``` {r add_screen}
+# add friends' screen_name
+final_friends_top50$friend_name <- top50_lookup$screen_name[match(final_friends_top50$friend_id, top50_lookup$user_id)]
+
+final <- final_friends_top50 %>% select(-friend_id)
+
+head(final)
+```
+Mapping it all out
+
+```{r network}
+extrafont::loadfonts(device="win")
+library(igraph)
+library(ggraph)
+f1 <- graph_from_data_frame(final, directed = TRUE, vertices = NULL)
+V(f1)$Popularity <- degree(f1, mode = 'in')
+
+ggraph(f1, layout='kk') + 
+  geom_edge_fan(aes(alpha = ..index..), show.legend = FALSE) +
+  geom_node_point(aes(size = Popularity)) +
+  theme_graph( fg_text_colour = 'black') 
+  
+ggraph(f1, layout='kk') + 
+  geom_edge_fan(aes(alpha = ..index..), show.legend = FALSE) +
+  geom_node_point(aes(size = Popularity)) +
+  geom_node_text(aes(label = name, fontface='bold'), 
+                 color = 'white', size = 3) +
+  theme_graph(background = 'dimgray', text_colour = 'white',title_size = 30)+
+  scale_edge_color_brewer(palette = 'Set1')+ 
+  labs(title='Network of the Top 50 KOT users')
+```
+```{r top50_graphed}
+ggraph(f1, layout='kk') + 
+  geom_edge_fan(aes(alpha = ..index..), show.legend = FALSE) +
+  geom_node_point(aes(size = Popularity)) +
+  theme_graph( fg_text_colour = 'black') +
+  geom_edge_link(aes(colour = "steelblue")) +
+  scale_edge_color_brewer(palette = 'Set1') + 
+  labs(title='Top 50 KOT users and the links between them')
+```
+```{r}
+tweets_top50 <- tweets_all %>%
+  filter(screen_name %in% top_50$screen_name)
+
+tweets50 <- NULL
+for ( i in 1:length(top_50$screen_name)){
+tweets_user <- get_timeline(top_50$screen_name[i],n=1500, token=token_here)
+tweets50 <- rbind(tweets50,tweets_user)
+}
+
+tweets50$type <- ifelse(grepl("RT",str_sub(tweets50$text,1,2))==TRUE,
+                          "retweet","own tweet")
+
+tweets50_left <- tweets50 %>%
+  filter(!type %in% "retweet")
+
+tweets50_sum <- tweets50_left %>%
+  group_by(screen_name) %>%
+  summarise(retweets=mean(retweet_count), total_retweets=sum(retweet_count),
+            favorites=mean(favorite_count), total_favs=sum(favorite_count))
+
+ggplot(data=tweets50_sum, aes(x=retweets, y=favorites))+
+  geom_point()
+```
+```{r}
+# i=1
+# tweets <- rtweet::search_tweets(q = tweets50_left$screen_name[i],
+#                                 sinceId = tweets50_left$status_id[i],
+#                                 n = 2000, 
+#                                 include_rts = FALSE)
+# 
+# tweets <- tweets %>%
+#   distinct()
+# tweet_replies <- tweets %>%
+#   filter(tweets$in_reply_to_status_status_id %in% tweets50_left$status_id)
+# tweets
+# # for ( i in 1: length(tweets50_left$status_id)){}
+# tweets_replies <- function(screen_name, ostatus_id){
+#   tweets_searched=rtweet::search_tweets(q = screen_name,
+#                                 sinceId = ostatus_id,
+#                                 n = 2000, 
+#                                 include_rts = FALSE,
+#                                retryonratelimit=TRUE)
+# tweets_searched = tweets_searched %>%
+#   distinct() 
+# replied_tweets=tweets_searched %>%
+#   filter(in_reply_to_status_status_id %in% ostatus_id) %>%
+#   summarise(reply_number=length(in_reply_to_status_status_id))
+# return(replied_tweets$reply_number)
+# }
+# number_replies <- NULL
+# for (k in 1:2){#length(tweets50_left$screen_name)){
+# first_tweet <- tweets_replies(screen_name=tweets50_left$screen_name[k],
+#                               ostatus_id=tweets50_left$status_id[k]) %>%
+#   as.data.frame()
+# names(first_tweet) <- "number_replying"
+# number_replies <- rbind(number_replies, first_tweet)
+# }
+# 
+# tweets50_left$replies <- lapply(tweets50_left$screen_name,
+#                                        tweets50_left$status_id,tweets_replies)
+# 
+# 
+# 
+# 
+# id <- tweets$status_id[5]
+# diff <- 1
+# while (diff != 0) {
+# id_next <- tweets %>%
+#   filter(in_reply_to_status_status_id %in% id) %>%
+#   select(status_id) %>%
+#   pull()
+# id_new <- unique(c(id, id_next))
+# diff <- length(id_new) - length(id)
+# id <- id_new
+# }
+# 
+# all_replies <- tweets %>% 
+#   filter(in_reply_to_status_status_id %in% id)
+```
+
+```{r, reading_replies}
+tweets50_left$status_link <- 
+  paste0("https://twitter.com/", tweets50_left$screen_name, "/status/",
+         tweets50_left$status_id)
+
+library(rvest)
+url <- "https://twitter.com/login"
+session <- html_session(url)
+form <- html_form(read_html(url))[[2]]
+
+filled_form <- set_values(form,
+                          "session[username_or_email]" = "%%%%%%%%%%%%%%%%",
+                          "session[password]" = "%%%%%%%%%%%%%%%")
+tweets50_left <- readRDS("tweets50_left.rds")
+replies <- readRDS("replies39444.rds")
+replies <- NULL
+saveRDS(replies, file=paste0("replies",i,".rds"))
+for (i in 1:length(tweets50_left$screen_name)){
+reply_nums <- submit_form(session, filled_form) %>%
+  jump_to(tweets50_left$status_link[i]) %>% 
+  html_node(xpath='//*[contains(concat( " ", @class, " " ), concat( " ", "ProfileTweet-actionCountForPresentation", " " ))]') %>%
+  html_text() %>% as.numeric() %>% as.data.frame()
+replies <- rbind(replies,reply_nums)
+}
+names(replies) <- "number_replies"
+saveRDS(tweets50_left, file="tweets50_left.rds")
+tweets50_left$number_replies <- replies
+tweets50_left
+```
+
+
+
+
+```{r,top_linked_tweeps}
+usersdata <- NULL
+for (i in 1:length(screen_names)){
+user_total <- submit_form(session, filled_form) %>%
+  jump_to(paste0("https://twitter.com/",screen_names[i])) %>% 
+  html_nodes(xpath='//*[contains(concat( " ", @class, " " ), concat( " ", "ProfileNav-value", " " ))]') %>%
+  html_text() %>% as.character()
+user_data = gsub("K","000",
+                   gsub("M","000000",
+                        gsub("\\.","",
+                             gsub(",","",
+                                  gsub("\n ","",user_total[1:6]))))) %>%
+  trimws(which="both") %>% as.numeric() %>% t()%>% as.data.frame() 
+names(user_data) = c("tweets","following","followers","likes","lists","moments")
+user_data$screen_name=screen_names[i]
+usersdata <- rbind(usersdata,user_data)
+}
+users_popularity=data.frame(
+  screen_name=c("xtiandela", "C_NyaKundiH", "KoinangeJeff", "paulakahumbu", 
+         "kenyanpundit", "ADELLEO", "Asamoh_", "RobertAlai", "CarolRadull",
+         "JulieGichuru", "RamzZy_", "pyepar",  "LarryMadowo", "Brianmbunde",
+         "JoyDoreenBiira", "NiNanjira", "ChampagneKimie", "lillian_muli", 
+         "CpaWaweru", "smusyoka", "gathara", "RoadAlertsKE", "ItsMainaKageni",
+         "benstake", "Kipezer", "vinny_wa", "VickyRubadiri", "CarolineMutoko", 
+         "TheStarKenya", "bonifacemwangi", "MwalimChurchill", "AnneKiguta", 
+         "coldtusker", "mmnjug", "GraceMsalame", "Trackmann", "Nanjala1",
+         "Owaahh", "RookieKE", "mentalacrobatic", "bankelele", "Mbusii", 
+         "dailynation", "KaluhisKitchen", "masaku_", "mckym", "iWateba", 
+         "Sheilakari", "QueenGathoni", "JICHOdaDOG"),
+  top50_popularity=c(5,2,3,7,5,4,1,3,8,4,3,2,5,5,7,4,3,7,1,6,6,2,7,4,3,3,4,8,7,
+                     7,5,5,3,5,6,3,1,6,1,3,3,2,5,3,4,2,2,2,2,2)
+  )
+users_popularity$screen_name=as.character(users_popularity$screen_name)
+
+tweets50_replies <- tweets50_left %>%
+  group_by(screen_name) %>%
+  summarise(tweets=length(user_id),
+            retweets=sum(retweet_count),
+            favorites=sum(favorite_count),
+            replies_all=sum(na.omit(number_replies))) %>%
+  arrange(desc(replies_all))
+tweets50_all <- left_join(tweets50_replies, users_popularity, by="screen_name")
+top50_ranked=tweets50_all %>%
+#   filter(screen_name %in% c("GraceMsalame","Trackmann","kenyanpundit",
+#          "smusyoka","CarolRadull","gathara","Ramzzy_",
+#          "Brianmbunde","ADELLEO","Owaahh","KaluhisKitchen")) %>%
+  group_by(screen_name, top50_popularity) %>%
+  summarise(influence=retweets/tweets,
+         engagement=replies_all/tweets,
+           influence_engagement=retweets/replies_all) %>%
+  arrange(desc(influence_engagement)) 
+
+library(ggrepel)
+ggplot(data=top50_ranked, aes(x=top50_popularity, y= influence_engagement,
+                              label=screen_name))+ geom_point(stat="identity")+
+  geom_smooth() + geom_text_repel(aes(label=screen_name))+ ggthemes::theme_economist()+ggtitle("The popularity of top 50 KOT against their influence_engagement ratio")+xlab("Number of followers from top 50 KOT")
+```
+
+```{r tweet_tree}
+ramzzy_tweets <- tweets50_left %>%
+  filter(screen_name %in% c("RamzZy_")) %>%
+  arrange(desc(number_replies))
+
+
+tweets_searched=rtweet::search_tweets(q = ramzzy_tweets$screen_name[3],
+                                sinceId = ramzzy_tweets$status_id[3],
+                                n = 2000,
+                                include_rts = FALSE,
+                               retryonratelimit=TRUE)
+tweets_searched = tweets_searched %>%
+  distinct()
+replied_tweets=tweets_searched %>%
+  filter(in_reply_to_status_status_id %in% ramzzy_tweets$status_id[3])
+
+
+id <- replied_tweets$status_id[5]
+diff <- 1
+while (diff != 0) {
+id_next <- tweets %>%
+  filter(in_reply_to_status_status_id %in% id) %>%
+  select(status_id) %>%
+  pull()
+id_new <- unique(c(id, id_next))
+diff <- length(id_new) - length(id)
+id <- id_new
+}
+
+```
